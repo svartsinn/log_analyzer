@@ -3,6 +3,7 @@ import datetime
 import unittest
 
 import log_analyzer
+from log_analyzer import LOG_RECORD_RE
 
 
 class TestSuite(unittest.TestCase):
@@ -24,7 +25,7 @@ class TestSuite(unittest.TestCase):
 
     def test_process_line(self):
         line = """1.199.4.96 -  - [29/Jun/2017:04:09:45 +0300] "GET /api/v2/banner/20770003/statistic/?date_from=2017-06-29&date_to=2017-06-29 HTTP/1.1" 200 109 "-" "Lynx/2.8.8dev.9 libwww-FM/2.14 SSL-MM/1.4.1 GNUTLS/2.10.5" "-" "1498698585-3800516057-4708-9762513" "2ae7917fdbbe67b1c8" 0.060"""
-        self.assertEqual(log_analyzer.process_line(line), ('/api/v2/banner/20770003/statistic/?date_from=2017-06-29&date_to=2017-06-29', 0.06))
+        self.assertEqual(log_analyzer.process_line(line, LOG_RECORD_RE), ('/api/v2/banner/20770003/statistic/?date_from=2017-06-29&date_to=2017-06-29', 0.06))
 
     def test_get_statistics(self):
         line = {'/api/v2/banner/20770003': [0.1, 0.01, 0.03, 0.5]}
@@ -34,7 +35,7 @@ class TestSuite(unittest.TestCase):
 
     def test_process_incorrect_line(self):
         line = 'abcde'
-        self.assertEqual(log_analyzer.process_line(line), None)
+        self.assertEqual(log_analyzer.process_line(line, LOG_RECORD_RE), None)
 
 
 if __name__ == '__main__':
