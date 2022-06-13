@@ -73,8 +73,14 @@ def is_gzip_file(file_path):
     return file_path.split('.')[-1] == 'gz'
 
 
-def process_line(line):
-    match = LOG_RECORD_RE.match(line)
+def process_line(line, patterns):
+    """
+    Поиск в строке текста REGEX выражений.
+    :param line: исходная строка текста
+    :param patterns: скомпилированные REGEX паттерны
+    :return: адрес хоста и время запроса
+    """
+    match = patterns.match(line)
     if not match:
         return None
 
@@ -90,6 +96,11 @@ def process_line(line):
 
 
 def get_latest_log_info(files_dir):
+    """
+    Поиск последнего по дате лог-файла из директории по маске REGEX.
+    :param files_dir: директория для лог-файлов
+    :return: дата последнего лог-файла из директории
+    """
     logging.info('Поиск последнего файла с логами.')
     if not os.path.isdir(files_dir):
         return None
@@ -99,7 +110,10 @@ def get_latest_log_info(files_dir):
     for filename in os.listdir(files_dir):
         match = pattern.search(filename)
         if match:
-            file_date = datetime.datetime.strptime(match.group('date'), "%Y%m%d").date()
+            try:
+                file_date = datetime.datetime.strptime(match.group('date'), "%Y%m%d").date()
+            except TypeError:
+                logging.info(f'Неверный формат для даты.')
             file_path = os.path.join(files_dir, filename)
             result.append(DateNamedFileInfo(file_path=file_path, file_date=file_date))
     if result:
@@ -109,6 +123,12 @@ def get_latest_log_info(files_dir):
 
 
 def get_log_records(log_path, error_limit):
+    """
+    Возвращает записи из лог-файла с заданным лимитом ошибок.
+    :param log_path: путь до лог-файла
+    :param error_limit: лимит ошибок
+    :return: словарь списков из адреса хоста и времени запроса
+    """
     logging.info('Чтение данных из файла с логами.')
     open_fn = gzip.open if is_gzip_file(log_path) else io.open
     errors = 0
@@ -118,7 +138,7 @@ def get_log_records(log_path, error_limit):
         lines = log_file.readlines()
     for line in lines:
         records += 1
-        url, request_time = process_line(line)
+        url, request_time = process_line(line, patterns=LOG_RECORD_RE)
         if not url and not request_time:
             errors += 1
             continue
@@ -130,6 +150,12 @@ def get_log_records(log_path, error_limit):
 
 
 def get_statistics(records, report_size):
+    """
+    Подсчет статистики в лог-файле
+    :param records: словарь записей из лога
+    :param report_size: количество строк в отчете
+    :return: словарь списков из параметров статистики
+    """
     logging.info('Сбор статистики из лога.')
     time_overall = 0
     overall_rec = 0
@@ -154,6 +180,12 @@ def get_statistics(records, report_size):
 
 
 def get_report_path(report_dir, file_log):
+    """
+    Формирование пути для отчета с данными и логах.
+    :param report_dir: путь до отчета
+    :param file_log: название файла с логами
+    :return: полный путь до отчета
+    """
     logging.info('Формирование пути для отчета.')
     report_name = 'report-{}.html'.format(file_log.file_date.strftime(format="%Y.%m.%d"))
     report_path = os.path.join(report_dir, report_name)
@@ -161,6 +193,13 @@ def get_report_path(report_dir, file_log):
 
 
 def create_report(report_dir, report_path, stat):
+    """
+    Создание отчета со статистикой по лог-файлам
+    :param report_dir: папка с отчетом
+    :param report_path: полный путь до отчета
+    :param stat: словарь статистики
+    :return:
+    """
     logging.info('Создание отчета на основе шаблона.')
     template_path = os.path.join(report_dir, 'report.html')
     with open(template_path) as f:
@@ -190,9 +229,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Warning as e:
-        logging.info(str(e))
-    except Exception as e:
-        logging.exception(str(e))
+    main()
